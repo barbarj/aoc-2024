@@ -1,6 +1,4 @@
 use std::{
-    cmp::Ordering,
-    fmt::Display,
     fs::File,
     io::{BufRead, BufReader},
 };
@@ -19,25 +17,21 @@ fn parse_input(filename: &str) -> Vec<Vec<i32>> {
         .collect()
 }
 
-fn valid_window3(window: &[i32]) -> bool {
+fn is_valid_window(window: &[i32], ascending: bool) -> bool {
     assert_eq!(window.len(), 3);
-    if !((window[0] < window[1] && window[1] < window[2])
-        || (window[0] > window[1] && window[1] > window[2]))
-        || !(1..=3).contains(&window[0].abs_diff(window[1]))
-        || !(1..=3).contains(&window[1].abs_diff(window[2]))
-    {
-        return false;
-    }
-    true
+    let direction = (ascending && window[0] < window[1] && window[1] < window[2])
+        || (!ascending && window[0] > window[1] && window[1] > window[2]);
+    let magnitude = (1..=3).contains(&window[0].abs_diff(window[1]))
+        && (1..=3).contains(&window[1].abs_diff(window[2]));
+    direction && magnitude
 }
 
 fn is_report_safe_when_removing_i(report: &[i32], mut dampened: bool, to_remove: usize) -> bool {
     assert!(report.len() > 2);
     assert!(to_remove < 3);
-    let report_iter = report.iter();
-    let mut window: Vec<i32> = report_iter.clone().take(3).cloned().collect();
+    let mut window: Vec<i32> = report.iter().take(3).copied().collect();
     let mut ascending = window[0] < window[1];
-    if !valid_window3(&window) {
+    if !is_valid_window(&window, ascending) {
         if dampened {
             dampened = false;
             window.remove(to_remove);
@@ -48,21 +42,18 @@ fn is_report_safe_when_removing_i(report: &[i32], mut dampened: bool, to_remove:
     } else {
         window.remove(0);
     }
-    for level in report_iter.skip(3) {
+    for level in report.iter().skip(3) {
         window.push(*level);
-        if !valid_window3(&window)
-            || (ascending && window[0] > window[1])
-            || (!ascending && window[0] < window[1])
-        {
+        if !is_valid_window(&window, ascending) {
             if dampened {
                 dampened = false;
                 window.remove(to_remove);
-                continue;
             } else {
                 return false;
             }
+        } else {
+            window.remove(0);
         }
-        window.remove(0);
     }
     (1..=3).contains(&window[0].abs_diff(window[1]))
 }
