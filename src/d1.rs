@@ -1,41 +1,36 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fs::File, io::Read};
 
-use crate::common::lines_from_file;
+fn parse_input(filename: &str) -> (Vec<i32>, Vec<i32>) {
+    let mut file = File::open("input/".to_owned() + filename).unwrap();
+    let mut buffer = String::new();
+    file.read_to_string(&mut buffer).unwrap();
+    let nums = buffer.lines().map(|line| {
+        let mut nums = line.split_whitespace().map(|x| x.parse::<i32>().unwrap());
+        (nums.next().unwrap(), nums.next().unwrap())
+    });
+    nums.collect()
+}
 
 #[allow(dead_code)]
-fn list_differences(filename: &str) -> i32 {
-    let mut left: Vec<i32> = Vec::new();
-    let mut right: Vec<i32> = Vec::new();
+fn list_differences(filename: &str) -> u32 {
+    let (mut left, mut right) = parse_input(filename);
 
-    for line in lines_from_file(filename) {
-        let mut split = line.split("   ");
-        let left_num = split.next().unwrap();
-        let right_num = split.next().unwrap();
-        left.push(left_num.parse().unwrap());
-        right.push(right_num.parse().unwrap());
-    }
-
-    left.sort();
-    right.sort();
+    left.sort_unstable();
+    right.sort_unstable();
 
     left.iter()
         .zip(right.iter())
-        .map(|(a, b)| (a - b).abs())
+        .map(|(a, b)| a.abs_diff(*b))
         .sum()
 }
 
 #[allow(dead_code)]
 fn similarity_score(filename: &str) -> i32 {
-    let mut left: Vec<i32> = Vec::new();
-    let mut right: HashMap<i32, i32> = HashMap::new();
-
-    for line in lines_from_file(filename) {
-        let mut split = line.split("   ");
-        let left_num = split.next().unwrap().parse().unwrap();
-        let right_num = split.next().unwrap().parse().unwrap();
-        left.push(left_num);
-        right.entry(right_num).and_modify(|e| *e += 1).or_insert(1);
-    }
+    let (left, right) = parse_input(filename);
+    let right: HashMap<i32, i32> = right.iter().fold(HashMap::new(), |mut counts, num| {
+        counts.entry(*num).and_modify(|x| *x += 1).or_insert(1);
+        counts
+    });
 
     left.iter().map(|x| x * right.get(x).unwrap_or(&0)).sum()
 }
