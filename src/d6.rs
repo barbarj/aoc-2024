@@ -77,61 +77,20 @@ fn get_input(filename: &str) -> (MapData, (usize, usize)) {
 fn count_distinct_positions(filename: &str) -> usize {
     let (map_data, starting_pos) = get_input(filename);
     let visited = positions_visited(&map_data, starting_pos).unwrap();
-    let mut all_visited = visited.up;
-    all_visited.extend(visited.right);
-    all_visited.extend(visited.down);
-    all_visited.extend(visited.left);
-    all_visited.len()
+    visited.union_all().len()
 }
 
 fn count_loopable_obstacle_insertions(filename: &str) -> usize {
     let (mut map_data, starting_pos) = get_input(filename);
     let visited = positions_visited(&map_data, starting_pos).unwrap();
-    let mut seen = HashSet::new();
     let mut count = 0;
-    for (row, col) in visited.up {
-        let obs_pos = (row - 1, col);
-        if row > 0 && !seen.contains(&obs_pos) {
-            map_data.add_obstacle(obs_pos);
-            if positions_visited(&map_data, starting_pos).is_none() {
-                count += 1;
-            }
-            map_data.remove_obstacle(obs_pos);
-            seen.insert(obs_pos);
+    for (row, col) in visited.union_all() {
+        let obs_pos = (row, col);
+        map_data.add_obstacle(obs_pos);
+        if positions_visited(&map_data, starting_pos).is_none() {
+            count += 1;
         }
-    }
-    for (row, col) in visited.right {
-        let obs_pos = (row, col + 1);
-        if col < map_data.width - 1 && !seen.contains(&obs_pos) {
-            map_data.add_obstacle(obs_pos);
-            if positions_visited(&map_data, starting_pos).is_none() {
-                count += 1;
-            }
-            map_data.remove_obstacle(obs_pos);
-            seen.insert(obs_pos);
-        }
-    }
-    for (row, col) in visited.down {
-        let obs_pos = (row + 1, col);
-        if row < map_data.height - 1 && !seen.contains(&obs_pos) {
-            map_data.add_obstacle(obs_pos);
-            if positions_visited(&map_data, starting_pos).is_none() {
-                count += 1;
-            }
-            map_data.remove_obstacle(obs_pos);
-            seen.insert(obs_pos);
-        }
-    }
-    for (row, col) in visited.left {
-        let obs_pos = (row, col - 1);
-        if col > 0 && !seen.contains(&obs_pos) {
-            map_data.add_obstacle(obs_pos);
-            if positions_visited(&map_data, starting_pos).is_none() {
-                count += 1;
-            }
-            map_data.remove_obstacle((row, col - 1));
-            seen.insert(obs_pos);
-        }
+        map_data.remove_obstacle(obs_pos);
     }
     count
 }
@@ -141,6 +100,15 @@ struct PositionsVisited {
     right: HashSet<(usize, usize)>,
     down: HashSet<(usize, usize)>,
     left: HashSet<(usize, usize)>,
+}
+impl PositionsVisited {
+    fn union_all(self) -> HashSet<(usize, usize)> {
+        let mut all = self.up;
+        all.extend(self.right);
+        all.extend(self.down);
+        all.extend(self.left);
+        all
+    }
 }
 
 fn positions_visited(map_data: &MapData, mut pos: (usize, usize)) -> Option<PositionsVisited> {
