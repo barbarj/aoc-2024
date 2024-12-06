@@ -1,206 +1,192 @@
 #![allow(dead_code)]
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashSet,
     fs::File,
     io::{BufRead, BufReader},
 };
 
-struct MapData {
-    obstacles_by_row: HashMap<usize, Vec<usize>>,
-    obstacles_by_col: HashMap<usize, Vec<usize>>,
+type Position = (usize, usize);
+
+struct Map {
+    map: Vec<Vec<u8>>,
     width: usize,
     height: usize,
 }
-impl MapData {
-    fn new() -> Self {
-        MapData {
-            obstacles_by_row: HashMap::new(),
-            obstacles_by_col: HashMap::new(),
-            width: 0,
-            height: 0,
-        }
+impl Map {
+    fn new(map: Vec<Vec<u8>>) -> Self {
+        let height = map.len();
+        let width = map[0].len();
+        Map { map, width, height }
     }
 
-    fn add_obstacle(&mut self, (row, col): (usize, usize)) {
-        self.obstacles_by_row
-            .entry(row)
-            .and_modify(|v: &mut Vec<usize>| v.push(col))
-            .or_insert(vec![col]);
-        self.obstacles_by_col
-            .entry(col)
-            .and_modify(|v: &mut Vec<usize>| v.push(row))
-            .or_insert(vec![row]);
+    fn add_obstacle(&mut self, (row, col): Position) {
+        self.map[row][col] = b'#';
     }
 
-    fn remove_obstacle(&mut self, (row, col): (usize, usize)) {
-        self.obstacles_by_row
-            .entry(row)
-            .and_modify(|v: &mut Vec<usize>| {
-                if let Some(pos) = v.iter().enumerate().find(|(_, x)| **x == col).map(|x| x.0) {
-                    v.remove(pos);
-                }
-            });
-        self.obstacles_by_col
-            .entry(col)
-            .and_modify(|v: &mut Vec<usize>| {
-                if let Some(pos) = v.iter().enumerate().find(|(_, x)| **x == row).map(|x| x.0) {
-                    v.remove(pos);
-                }
-            });
+    fn remove_obstacle(&mut self, (row, col): Position) {
+        self.map[row][col] = 0;
     }
 }
 
-fn get_input(filename: &str) -> (MapData, (usize, usize)) {
+fn get_input(filename: &str) -> (Map, Position) {
     let file = File::open("input/6/".to_owned() + filename).unwrap();
 
-    let mut guard_pos = None;
-    let mut map_data = MapData::new();
-    for (row, line) in BufReader::new(file).lines().enumerate() {
-        let line = line.unwrap();
-        if map_data.width == 0 {
-            map_data.width = line.len();
-        }
-        map_data.height += 1;
-        for (col, char) in line.chars().enumerate() {
-            if char == '#' {
-                map_data.add_obstacle((row, col));
-            } else if char == '^' {
-                guard_pos = Some((row, col));
+    let mut map: Vec<Vec<u8>> = BufReader::new(file)
+        .lines()
+        .map(|line| {
+            line.unwrap()
+                .bytes()
+                .map(|b| if b == b'.' { 0 } else { b })
+                .collect()
+        })
+        .collect();
+    for r in 0..map.len() {
+        for c in 0..map[r].len() {
+            if map[r][c] == b'^' {
+                map[r][c] = 0;
+                return (Map::new(map), (r, c));
             }
         }
     }
-    assert!(map_data.width > 0);
-    assert!(map_data.height > 0);
-    (map_data, guard_pos.unwrap())
+    unreachable!();
 }
 
 fn count_distinct_positions(filename: &str) -> usize {
-    let (map_data, starting_pos) = get_input(filename);
-    let visited = positions_visited(&map_data, starting_pos).unwrap();
-    visited.union_all().len()
+    let (mut map_data, starting_pos) = get_input(filename);
+    let visited = positions_visited(&mut map_data, starting_pos).unwrap();
+    let unique: HashSet<_> = visited.iter().collect();
+    unique.len()
+}
+
+fn clear_visited(map: &mut Map, visited: impl Iterator<Item = Position>) {
+    for (row, col) in visited {
+        map.map[row][col] = 0;
+    }
 }
 
 fn count_loopable_obstacle_insertions(filename: &str) -> usize {
-    let (mut map_data, starting_pos) = get_input(filename);
-    let visited = positions_visited(&map_data, starting_pos).unwrap();
+    let (mut map, starting_pos) = get_input(filename);
+    let visited = positions_visited(&mut map, starting_pos).unwrap();
+    let visited: HashSet<_> = visited.iter().collect();
+    clear_visited(&mut map, visited.iter().map(|pos| **pos));
     let mut count = 0;
-    for (row, col) in visited.union_all() {
-        let obs_pos = (row, col);
-        map_data.add_obstacle(obs_pos);
-        if positions_visited(&map_data, starting_pos).is_none() {
-            count += 1;
+    for (row, col) in visited.iter() {
+        let obs_pos = (*row, *col);
+        if starting_pos == obs_pos {
+            continue;
         }
-        map_data.remove_obstacle(obs_pos);
+        map.add_obstacle(obs_pos);
+        match positions_visited(&mut map, starting_pos) {
+            Ok(attempt_visits) => clear_visited(&mut map, attempt_visits.iter().copied()),
+            Err(attempt_visits) => {
+                count += 1;
+                clear_visited(&mut map, attempt_visits.iter().copied());
+            }
+        }
+        map.remove_obstacle(obs_pos);
     }
     count
 }
 
-struct PositionsVisited {
-    up: HashSet<(usize, usize)>,
-    right: HashSet<(usize, usize)>,
-    down: HashSet<(usize, usize)>,
-    left: HashSet<(usize, usize)>,
-}
-impl PositionsVisited {
-    fn union_all(self) -> HashSet<(usize, usize)> {
-        let mut all = self.up;
-        all.extend(self.right);
-        all.extend(self.down);
-        all.extend(self.left);
-        all
-    }
+#[inline]
+fn mark_up(pos: u8) -> u8 {
+    assert_ne!(pos, b'#');
+    pos | 0b1
 }
 
-fn positions_visited(map_data: &MapData, mut pos: (usize, usize)) -> Option<PositionsVisited> {
-    let mut up_positions = HashSet::new();
-    let mut right_positions = HashSet::new();
-    let mut down_positions = HashSet::new();
-    let mut left_positions = HashSet::new();
+#[inline]
+fn already_up(pos: u8) -> bool {
+    pos & 0b1 == 0b1
+}
+
+#[inline]
+fn mark_right(pos: u8) -> u8 {
+    assert_ne!(pos, b'#');
+    pos | 0b10
+}
+
+#[inline]
+fn already_right(pos: u8) -> bool {
+    pos & 0b10 == 0b10
+}
+
+#[inline]
+fn mark_down(pos: u8) -> u8 {
+    assert_ne!(pos, b'#');
+    pos | 0b100
+}
+
+#[inline]
+fn already_down(pos: u8) -> bool {
+    pos & 0b100 == 0b100
+}
+
+#[inline]
+fn mark_left(pos: u8) -> u8 {
+    assert_ne!(pos, b'#');
+    pos | 0b1000
+}
+
+#[inline]
+fn already_left(pos: u8) -> bool {
+    pos & 0b1000 == 0b1000
+}
+
+fn positions_visited(map: &mut Map, mut pos: Position) -> Result<Vec<Position>, Vec<Position>> {
+    let mut positions = Vec::new();
+    map.map[pos.0][pos.1] = mark_up(map.map[pos.0][pos.1]);
+    positions.push(pos);
     loop {
         // going up
-        if let Some(next_obstacle_row) = map_data
-            .obstacles_by_col
-            .get(&pos.1)
-            .and_then(|obs| obs.iter().filter(|r| **r < pos.0).max())
-        {
-            let visited_range = *next_obstacle_row + 1..=pos.0;
-            if visited_range
-                .clone()
-                .any(|r| up_positions.contains(&(r, pos.1)))
-            {
-                return None;
+        while pos.0 > 0 && map.map[pos.0 - 1][pos.1] != b'#' {
+            pos = (pos.0 - 1, pos.1);
+            if already_up(map.map[pos.0][pos.1]) {
+                return Err(positions);
             }
-            up_positions.extend(visited_range.map(|r| (r, pos.1)));
-            pos = (next_obstacle_row + 1, pos.1);
-        } else {
-            up_positions.extend((0..=pos.0).map(|r| (r, pos.1)));
+            map.map[pos.0][pos.1] = mark_up(map.map[pos.0][pos.1]);
+            positions.push(pos);
+        }
+        if pos.0 == 0 {
             break;
         }
         // going right
-        if let Some(next_obstacle_col) = map_data
-            .obstacles_by_row
-            .get(&pos.0)
-            .and_then(|obs| obs.iter().filter(|c| **c > pos.1).min())
-        {
-            let visited_range = pos.1..*next_obstacle_col;
-            if visited_range
-                .clone()
-                .any(|c| right_positions.contains(&(pos.0, c)))
-            {
-                return None;
+        while pos.1 < map.width - 1 && map.map[pos.0][pos.1 + 1] != b'#' {
+            pos = (pos.0, pos.1 + 1);
+            if already_right(map.map[pos.0][pos.1]) {
+                return Err(positions);
             }
-            right_positions.extend(visited_range.map(|c| (pos.0, c)));
-            pos = (pos.0, next_obstacle_col - 1);
-        } else {
-            right_positions.extend((pos.1..map_data.width).map(|c| (pos.0, c)));
+            map.map[pos.0][pos.1] = mark_right(map.map[pos.0][pos.1]);
+            positions.push(pos);
+        }
+        if pos.1 == map.width - 1 {
             break;
         }
         // going down
-        if let Some(next_obstacle_row) = map_data
-            .obstacles_by_col
-            .get(&pos.1)
-            .and_then(|obs| obs.iter().filter(|r| **r > pos.0).min())
-        {
-            let visited_range = pos.0..*next_obstacle_row;
-            if visited_range
-                .clone()
-                .any(|r| down_positions.contains(&(r, pos.1)))
-            {
-                return None;
+        while pos.0 < map.height - 1 && map.map[pos.0 + 1][pos.1] != b'#' {
+            pos = (pos.0 + 1, pos.1);
+            if already_down(map.map[pos.0][pos.1]) {
+                return Err(positions);
             }
-            down_positions.extend(visited_range.map(|r| (r, pos.1)));
-            pos = (next_obstacle_row - 1, pos.1);
-        } else {
-            down_positions.extend((pos.0..map_data.height).map(|r| (r, pos.1)));
+            map.map[pos.0][pos.1] = mark_down(map.map[pos.0][pos.1]);
+            positions.push(pos);
+        }
+        if pos.0 == map.height - 1 {
             break;
         }
         // going left
-        if let Some(next_obstacle_col) = map_data
-            .obstacles_by_row
-            .get(&pos.0)
-            .and_then(|obs| obs.iter().filter(|c| **c < pos.1).max())
-        {
-            let visited_range = *next_obstacle_col + 1..=pos.1;
-            if visited_range
-                .clone()
-                .any(|c| left_positions.contains(&(pos.0, c)))
-            {
-                return None;
+        while pos.1 > 0 && map.map[pos.0][pos.1 - 1] != b'#' {
+            pos = (pos.0, pos.1 - 1);
+            if already_left(map.map[pos.0][pos.1]) {
+                return Err(positions);
             }
-            left_positions.extend(visited_range.map(|c| (pos.0, c)));
-            pos = (pos.0, next_obstacle_col + 1);
-        } else {
-            left_positions.extend((0..=pos.1).map(|c| (pos.0, c)));
+            map.map[pos.0][pos.1] = mark_left(map.map[pos.0][pos.1]);
+            positions.push(pos);
+        }
+        if pos.1 == 0 {
             break;
         }
     }
-
-    Some(PositionsVisited {
-        up: up_positions,
-        right: right_positions,
-        down: down_positions,
-        left: left_positions,
-    })
+    Ok(positions)
 }
 
 #[cfg(test)]
