@@ -3,10 +3,12 @@ use std::{
     collections::HashSet,
     fs::File,
     io::{BufRead, BufReader},
+    num, thread,
 };
 
 type Position = (usize, usize);
 
+#[derive(Clone)]
 struct Map {
     map: Vec<Vec<u8>>,
     width: usize,
@@ -64,28 +66,47 @@ fn clear_visited(map: &mut Map, visited: impl Iterator<Item = Position>) {
     }
 }
 
-fn count_loopable_obstacle_insertions(filename: &str) -> usize {
+fn count_loopable_obstacle_insertions(filename: &str, num_threads: usize) -> usize {
     let (mut map, starting_pos) = get_input(filename);
     let visited = positions_visited(&mut map, starting_pos).unwrap();
-    let visited: HashSet<_> = visited.iter().collect();
-    clear_visited(&mut map, visited.iter().map(|pos| **pos));
-    let mut count = 0;
-    for (row, col) in visited.iter() {
-        let obs_pos = (*row, *col);
-        if starting_pos == obs_pos {
-            continue;
-        }
-        map.add_obstacle(obs_pos);
-        match positions_visited(&mut map, starting_pos) {
-            Ok(attempt_visits) => clear_visited(&mut map, attempt_visits.iter().copied()),
-            Err(attempt_visits) => {
-                count += 1;
-                clear_visited(&mut map, attempt_visits.iter().copied());
-            }
-        }
-        map.remove_obstacle(obs_pos);
+    let visited: HashSet<_> = visited.into_iter().collect();
+    let visited: Vec<Position> = visited.into_iter().collect();
+    clear_visited(&mut map, visited.iter().copied());
+    let mut children = Vec::new();
+
+    let mut chunk_size = visited.len() / num_threads;
+    if visited.len() % chunk_size != 0 {
+        chunk_size += 1;
     }
-    count
+    let mut visited_chunks = visited.chunks(chunk_size);
+    for _ in 0..num_threads {
+        let mut map = map.clone();
+        let positions: Vec<Position> = visited_chunks.next().unwrap().to_vec();
+        let child = thread::spawn(move || {
+            let mut count = 0;
+            for obs_pos in positions {
+                if starting_pos == obs_pos {
+                    continue;
+                }
+                map.add_obstacle(obs_pos);
+                match positions_visited(&mut map, starting_pos) {
+                    Ok(attempt_visits) => clear_visited(&mut map, attempt_visits.iter().copied()),
+                    Err(attempt_visits) => {
+                        count += 1;
+                        clear_visited(&mut map, attempt_visits.iter().copied());
+                    }
+                }
+                map.remove_obstacle(obs_pos);
+            }
+            count
+        });
+        children.push(child);
+    }
+
+    children
+        .into_iter()
+        .map(|child| child.join().unwrap())
+        .sum()
 }
 
 #[inline]
@@ -207,13 +228,13 @@ mod tests {
 
     #[test]
     fn part2_example() {
-        let result = count_loopable_obstacle_insertions("example.txt");
+        let result = count_loopable_obstacle_insertions("example.txt", 1);
         assert_eq!(result, 6);
     }
 
     #[test]
     fn part2() {
-        let result = count_loopable_obstacle_insertions("input.txt");
+        let result = count_loopable_obstacle_insertions("input.txt", 8);
         assert_eq!(result, 1562);
     }
 }
