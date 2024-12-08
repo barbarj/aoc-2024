@@ -3,7 +3,7 @@ use std::{
     collections::HashSet,
     fs::File,
     io::{BufRead, BufReader},
-    num, thread,
+    thread,
 };
 
 type Position = (usize, usize);
