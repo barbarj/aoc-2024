@@ -41,41 +41,57 @@ fn checksum_after_moving_files(filename: &str) -> usize {
     let disk = load_input(filename);
     let mut block_position = 0;
     let mut files = Vec::with_capacity(disk.len() / 2);
-    let mut free_space = VecDeque::with_capacity(disk.len() / 2);
+    let mut free_space: [Vec<usize>; 10] = [
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+    ];
     for (idx, space) in disk.iter().enumerate() {
         let space = *space as usize;
         if idx % 2 == 0 {
             files.push((idx / 2, block_position..block_position + space));
-        } else {
-            free_space.push_back(block_position..block_position + space);
+        } else if space != 0 {
+            free_space[space].push(block_position);
         }
         block_position += space;
     }
-    let mut placed = Vec::with_capacity(disk.len() / 2);
-
-    while let Some(file) = files.pop() {
-        if let Some(move_to_idx) = free_space
-            .iter()
-            .enumerate()
-            .find(|(_, range)| range.len() >= file.1.len())
-            .map(|(idx, _)| idx)
-        {
-            let move_to = free_space.get_mut(move_to_idx).unwrap();
-            placed.push((file.0, (move_to.start..move_to.start + file.1.len())));
-            move_to.start += file.1.len();
-            while free_space.front().filter(|x| x.is_empty()).is_some() {
-                let _ = free_space.pop_front();
-            }
-        } else {
-            placed.push(file);
-        }
-        let _ = free_space.pop_back();
+    for fs in free_space.iter_mut() {
+        fs.reverse();
     }
 
-    placed
-        .into_iter()
-        .map(|(file_id, range)| range.map(|x| x * file_id).sum::<usize>())
-        .sum()
+    let mut checksum = 0;
+    while let Some(file) = files.pop() {
+        let file_size = file.1.len();
+        if let Some(i) = free_space
+            .iter()
+            .enumerate()
+            .flat_map(|(idx, spaces)| spaces.last().map(|x| (idx, x)))
+            .filter(|(idx, pos)| *idx >= file_size && **pos < file.1.start)
+            .min_by_key(|(_, pos)| **pos)
+            .map(|(idx, _)| idx)
+        {
+            let pos = free_space[i].pop().unwrap();
+            checksum += (pos..pos + file_size).map(|x| x * file.0).sum::<usize>();
+            if i != file_size {
+                let new_space_size = i - file_size;
+                let new_pos = pos + file_size;
+                let insert_idx = free_space[new_space_size]
+                    .binary_search_by(|x| x.cmp(&new_pos).reverse())
+                    .unwrap_err();
+                free_space[new_space_size].insert(insert_idx, new_pos);
+            }
+        } else {
+            checksum += file.1.map(|x| x * file.0).sum::<usize>();
+        }
+    }
+    checksum
 }
 
 #[cfg(test)]
