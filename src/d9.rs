@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use std::{collections::VecDeque, fs};
+use std::fs;
 
 fn load_input(filename: &str) -> Vec<u8> {
     let contents = fs::read_to_string("input/9/".to_owned() + filename).unwrap();
