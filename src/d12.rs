@@ -79,15 +79,48 @@ fn find_area_and_perimiter(map: &Map<u8>, seen: &mut Map<bool>, i: usize, j: usi
     (area, perimiter)
 }
 
+fn is_concave_corner_up_right(map: &Map<u8>, i: usize, j: usize) -> bool {
+    let kind = map.get(i, j);
+    i > 0
+        && j < map.width - 1
+        && map.get(i - 1, j + 1) != kind
+        && map.get(i - 1, j) == kind
+        && map.get(i, j + 1) == kind
+}
+
+fn is_concave_corner_up_left(map: &Map<u8>, i: usize, j: usize) -> bool {
+    let kind = map.get(i, j);
+    i > 0
+        && j > 0
+        && map.get(i - 1, j - 1) != kind
+        && map.get(i - 1, j) == kind
+        && map.get(i, j - 1) == kind
+}
+
+fn is_concave_corner_down_left(map: &Map<u8>, i: usize, j: usize) -> bool {
+    let kind = map.get(i, j);
+    i < map.height - 1
+        && j > 0
+        && map.get(i + 1, j - 1) != kind
+        && map.get(i + 1, j) == kind
+        && map.get(i, j - 1) == kind
+}
+
+fn is_concave_corner_down_right(map: &Map<u8>, i: usize, j: usize) -> bool {
+    let kind = map.get(i, j);
+    i < map.height - 1
+        && j < map.width - 1
+        && map.get(i + 1, j + 1) != kind
+        && map.get(i + 1, j) == kind
+        && map.get(i, j + 1) == kind
+}
+
 fn find_area_and_sides(map: &Map<u8>, seen: &mut Map<bool>, i: usize, j: usize) -> (u32, u32) {
     let kind = map.get(i, j);
     let mut queue = VecDeque::new();
     queue.push_back((i, j));
     let mut area = 0;
-    let mut top_edges = Vec::new();
-    let mut right_edges = Vec::new();
-    let mut bottom_edges = Vec::new();
-    let mut left_edges = Vec::new();
+    let mut corners = 0;
 
     while let Some((i, j)) = queue.pop_front() {
         if seen.get(i, j) {
@@ -95,71 +128,54 @@ fn find_area_and_sides(map: &Map<u8>, seen: &mut Map<bool>, i: usize, j: usize) 
         }
         seen.set(i, j, true);
         area += 1;
+        let mut edges = 0u8;
         // up
         if i > 0 && map.get(i - 1, j) == kind {
             queue.push_back((i - 1, j));
         } else {
-            top_edges.push((i, j));
+            edges |= 0b0001;
         }
         // right
         if j < map.width - 1 && map.get(i, j + 1) == kind {
             queue.push_back((i, j + 1));
         } else {
-            right_edges.push((i, j));
+            edges |= 0b0010;
         }
         // down
         if i < map.height - 1 && map.get(i + 1, j) == kind {
             queue.push_back((i + 1, j));
         } else {
-            bottom_edges.push((i, j));
+            edges |= 0b0100;
         }
         // left
         if j > 0 && map.get(i, j - 1) == kind {
             queue.push_back((i, j - 1));
         } else {
-            left_edges.push((i, j));
+            edges |= 0b1000;
         }
+
+        // convex corners
+        let mut new_corners = match edges {
+            0b0011 | 0b0110 | 0b1100 | 0b1001 => 1,
+            0b0111 | 0b1110 | 0b1101 | 0b1011 => 2,
+            0b1111 => 4,
+            _ => 0,
+        };
+        // concave corners
+        new_corners += [
+            is_concave_corner_up_left(map, i, j),
+            is_concave_corner_up_right(map, i, j),
+            is_concave_corner_down_left(map, i, j),
+            is_concave_corner_down_right(map, i, j),
+        ]
+        .iter()
+        .filter(|x| **x)
+        .count() as u32;
+
+        corners += new_corners;
     }
 
-    // sort order (row, column)
-    top_edges.sort_unstable();
-    bottom_edges.sort_unstable();
-    // sort order (column, row)
-    right_edges.sort_unstable_by_key(|(r, c)| (*c, *r));
-    left_edges.sort_unstable_by_key(|(r, c)| (*c, *r));
-
-    let sides = horizontal_contiguous_range_count(&top_edges)
-        + horizontal_contiguous_range_count(&bottom_edges)
-        + vertical_contiguous_range_count(&right_edges)
-        + vertical_contiguous_range_count(&left_edges);
-
-    (area, sides)
-}
-
-fn horizontal_contiguous_range_count(points: &[(usize, usize)]) -> u32 {
-    assert!(!points.is_empty());
-    let mut count = 1;
-    let mut last_point = points[0];
-    for point in points.iter().skip(1) {
-        if point.0 != last_point.0 || point.1 != last_point.1 + 1 {
-            count += 1;
-        }
-        last_point = *point;
-    }
-    count
-}
-
-fn vertical_contiguous_range_count(points: &[(usize, usize)]) -> u32 {
-    assert!(!points.is_empty());
-    let mut count = 1;
-    let mut last_point = points[0];
-    for point in points.iter().skip(1) {
-        if point.1 != last_point.1 || point.0 != last_point.0 + 1 {
-            count += 1;
-        }
-        last_point = *point;
-    }
-    count
+    (area, corners)
 }
 
 fn fence_price_using_perimiter(filename: &str) -> u32 {
