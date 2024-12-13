@@ -21,19 +21,6 @@ impl Position {
         self.x += pos.x;
         self.y += pos.y;
     }
-
-    fn translate_by_neg(&mut self, pos: &Self) {
-        self.x -= pos.x;
-        self.y -= pos.y;
-    }
-
-    fn maximum_interval(&self, int: &Self) -> i64 {
-        (self.x / int.x).min(self.y / int.y)
-    }
-
-    fn before_pos(&self, pos: &Self) -> bool {
-        self.x < pos.x && self.y < pos.y
-    }
 }
 
 // returns (delta a, delta b, goal position)
@@ -56,34 +43,6 @@ fn load_input(filename: &str) -> Vec<(Position, Position, Position)> {
         lines.next(); // skip empty line
     }
     inputs
-}
-
-const PRIMES: [i64; 25] = [
-    2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97,
-];
-
-fn gcd(a: i64, b: i64) -> i64 {
-    if b == 0 {
-        a
-    } else {
-        gcd(b, a % b)
-    }
-}
-
-fn lcm(mut a: i64, mut b: i64) -> i64 {
-    //println!("lcm({a}, {b}) = ");
-    for p in &PRIMES {
-        if b < *p {
-            break;
-        }
-        while b >= *p && b % p == 0 {
-            b /= p;
-            a *= p;
-        }
-    }
-    a *= b;
-    //println!("{a}");
-    a
 }
 
 fn valid(a_diff: &Position, b_diff: &Position, prize: &Position, a: i64, b: i64) -> bool {
@@ -135,54 +94,6 @@ fn path_to_prize_fast_way(a_diff: &Position, b_diff: &Position, prize: &Position
     }
 }
 
-fn cheapest_path_to_prize_using_diophantine_equation_approach(
-    a_diff: &Position,
-    b_diff: &Position,
-    prize: &Position,
-) -> Option<i64> {
-    println!("{a_diff:?}, {b_diff:?}, {prize:?}");
-
-    let p = prize.x + prize.y;
-    let combined_a_diff = a_diff.x + a_diff.y;
-    let combined_b_diff = b_diff.x + b_diff.y;
-    //println!("{p} = {combined_a_diff}a + {combined_b_diff}b");
-    let comb_gcd = gcd(combined_a_diff, combined_b_diff);
-    //println!("gcd: {comb_gcd}");
-    if p % comb_gcd != 0 {
-        return None;
-    }
-    let a_step = combined_b_diff / comb_gcd;
-
-    let a_from_b = |bb| (p - (bb * combined_b_diff)) / combined_a_diff;
-    let b_from_a = |aa| (p - (aa * combined_a_diff)) / combined_b_diff;
-
-    // maximize a
-    let mut b = 0;
-    while b * combined_b_diff <= p && (p - (b * combined_b_diff)) % combined_a_diff != 0 {
-        b += 1;
-    }
-    if b * combined_b_diff > p {
-        return None;
-    }
-    let mut a = a_from_b(b);
-    while a >= a_step {
-        b = b_from_a(a);
-        if valid(a_diff, b_diff, prize, a, b) {
-            println!("valid: {a}, {b} = {}", (3 * a) + b);
-            return Some((3 * a) + b);
-            //min = min.map(|m| m.min((3 * a) + b)).or(Some((3 * a) + b));
-        }
-        a -= a_step;
-    }
-    b = b_from_a(a);
-    if valid(a_diff, b_diff, prize, a, b) {
-        println!("valid: {a}, {b} = {}", (3 * a) + b);
-        return Some((3 * a) + b);
-        //min = min.map(|m| m.min((3 * a) + b)).or(Some((3 * a) + b));
-    }
-    None
-}
-
 fn sum_cheapest_paths(filename: &str) -> i64 {
     let input = load_input(filename);
     input
@@ -193,7 +104,6 @@ fn sum_cheapest_paths(filename: &str) -> i64 {
 
 pub fn sum_cheapest_paths_part2(filename: &str) -> i64 {
     let input = load_input(filename);
-    println!("{} inputs", input.len());
     input
         .into_iter()
         .map(|(a, b, mut prize)| {
