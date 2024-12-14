@@ -24,7 +24,7 @@ impl<T: Copy> Map<T> {
 }
 
 fn load_input(filename: &str) -> Map<u8> {
-    let file = File::open("input/12/".to_owned() + filename).unwrap();
+    let file = File::open("input/2024/12/".to_owned() + filename).unwrap();
     let mut map = Vec::new();
     let mut width = 0;
     let mut height = 0;
@@ -220,7 +220,7 @@ fn fence_price_using_sides(filename: &str) -> u32 {
 
 #[cfg(test)]
 mod tests {
-    use crate::d12::{fence_price_using_perimiter, fence_price_using_sides};
+    use super::{fence_price_using_perimiter, fence_price_using_sides};
 
     #[test]
     fn part1_example() {

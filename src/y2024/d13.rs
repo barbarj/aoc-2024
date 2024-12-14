@@ -25,7 +25,7 @@ impl Position {
 
 // returns (delta a, delta b, goal position)
 fn load_input(filename: &str) -> Vec<(Position, Position, Position)> {
-    let contents = fs::read_to_string("input/13/".to_owned() + filename).unwrap();
+    let contents = fs::read_to_string("input/2024/13/".to_owned() + filename).unwrap();
     let mut lines = contents.lines().peekable();
     let mut inputs = Vec::new();
 

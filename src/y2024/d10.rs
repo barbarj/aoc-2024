@@ -2,7 +2,7 @@
 use std::{collections::HashSet, fs::File, io::Read};
 
 fn load_map(filename: &str) -> Vec<Vec<u8>> {
-    let mut file = File::open("input/10/".to_owned() + filename).unwrap();
+    let mut file = File::open("input/2024/10/".to_owned() + filename).unwrap();
     let mut contents = String::new();
     file.read_to_string(&mut contents).unwrap();
     contents

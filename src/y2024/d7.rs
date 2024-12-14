@@ -6,7 +6,7 @@ use std::{
 };
 
 fn get_input(filename: &str) -> Vec<(u64, Vec<u64>)> {
-    let file = File::open("input/7/".to_owned() + filename).unwrap();
+    let file = File::open("input/2024/7/".to_owned() + filename).unwrap();
     BufReader::new(file)
         .lines()
         .map(|line| {

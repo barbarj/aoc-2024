@@ -3,7 +3,7 @@
 use std::{collections::HashMap, fs::File, io::Read};
 
 fn load_input(filename: &str) -> Vec<usize> {
-    let mut file = File::open("input/11/".to_owned() + filename).unwrap();
+    let mut file = File::open("input/2024/11/".to_owned() + filename).unwrap();
     let mut contents = String::new();
     file.read_to_string(&mut contents).unwrap();
     contents

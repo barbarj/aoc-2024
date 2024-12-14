@@ -4,7 +4,7 @@ use regex::Regex;
 
 #[allow(dead_code)]
 fn get_input(filename: &str) -> String {
-    let mut file = File::open("input/3/".to_owned() + filename).unwrap();
+    let mut file = File::open("input/2024/3/".to_owned() + filename).unwrap();
     let mut contents = String::new();
     file.read_to_string(&mut contents).unwrap();
     contents

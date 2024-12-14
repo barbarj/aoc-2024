@@ -5,7 +5,7 @@ use std::{
 
 #[allow(dead_code)]
 fn parse_input(filename: &str) -> Vec<Vec<i32>> {
-    let file = File::open("input/2/".to_owned() + filename).unwrap();
+    let file = File::open("input/2024/2/".to_owned() + filename).unwrap();
     let lines = BufReader::new(file).lines();
     lines
         .map(|line| {

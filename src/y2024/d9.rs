@@ -2,7 +2,7 @@
 use std::fs;
 
 fn load_input(filename: &str) -> Vec<u8> {
-    let contents = fs::read_to_string("input/9/".to_owned() + filename).unwrap();
+    let contents = fs::read_to_string("input/2024/9/".to_owned() + filename).unwrap();
     contents.trim().bytes().map(|b| b - b'0').collect()
 }
 

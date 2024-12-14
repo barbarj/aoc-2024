@@ -25,7 +25,7 @@ impl Position {
 }
 
 fn load_input(filename: &str) -> (Vec<Position>, Vec<Position>) {
-    let contents = fs::read_to_string("input/14/".to_owned() + filename).unwrap();
+    let contents = fs::read_to_string("input/2024/14/".to_owned() + filename).unwrap();
     let line_pattern = Regex::new(r"p=(-?\d+),(-?\d+) v=(-?\d+),(-?\d+)").unwrap();
     contents
         .lines()
@@ -163,7 +163,7 @@ pub fn part2_animate(filename: &str, width: i64, height: i64, start_at: i64) {
 
 #[cfg(test)]
 mod tests {
-    use crate::d14::{part1_score, part2_estimate};
+    use super::{part1_score, part2_estimate};
 
     #[test]
     fn part1_example() {

@@ -31,7 +31,7 @@ impl Map {
 }
 
 fn get_input(filename: &str) -> (Map, Position) {
-    let file = File::open("input/6/".to_owned() + filename).unwrap();
+    let file = File::open("input/2024/6/".to_owned() + filename).unwrap();
 
     let mut map: Vec<Vec<u8>> = BufReader::new(file)
         .lines()

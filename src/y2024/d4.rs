@@ -5,7 +5,7 @@ use std::{
 
 #[allow(dead_code)]
 fn load_input(filename: &str) -> Vec<Vec<u8>> {
-    let file = File::open("input/4/".to_owned() + filename).unwrap();
+    let file = File::open("input/2024/4/".to_owned() + filename).unwrap();
     BufReader::new(file)
         .lines()
         .map(|line| line.unwrap().bytes().collect())

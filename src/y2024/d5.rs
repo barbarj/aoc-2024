@@ -6,7 +6,7 @@ use std::{
 
 #[allow(dead_code, clippy::while_let_on_iterator)]
 fn parse_input(filename: &str) -> (Vec<(u32, u32)>, Vec<Vec<u32>>) {
-    let file = File::open("input/5/".to_owned() + filename).unwrap();
+    let file = File::open("input/2024/5/".to_owned() + filename).unwrap();
     let mut lines = BufReader::new(file).lines();
 
     let mut rules = Vec::new();

@@ -23,7 +23,7 @@ struct Map {
 }
 
 fn parse_input(filename: &str) -> Map {
-    let file = File::open("input/8/".to_owned() + filename).unwrap();
+    let file = File::open("input/2024/8/".to_owned() + filename).unwrap();
     let mut positions = HashMap::new();
     let mut width = 0;
     let mut height = 0;
@@ -115,7 +115,7 @@ fn count_distinct_antinodes_part2(filename: &str) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use crate::d8::count_distinct_antinodes_part2;
+    use super::count_distinct_antinodes_part2;
 
     use super::count_distinct_antinodes;
 

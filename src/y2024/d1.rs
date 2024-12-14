@@ -1,7 +1,7 @@
 use std::{collections::HashMap, fs::File, io::Read};
 
 fn parse_input(filename: &str) -> (Vec<i32>, Vec<i32>) {
-    let mut file = File::open("input/".to_owned() + filename).unwrap();
+    let mut file = File::open("input/2024/1/".to_owned() + filename).unwrap();
     let mut buffer = String::new();
     file.read_to_string(&mut buffer).unwrap();
     let nums = buffer.lines().map(|line| {
@@ -41,25 +41,25 @@ mod tests {
 
     #[test]
     fn part1_example() {
-        let result = list_differences("1/example.txt");
+        let result = list_differences("example.txt");
         assert_eq!(result, 11);
     }
 
     #[test]
     fn part1() {
-        let result = list_differences("1/input.txt");
+        let result = list_differences("input.txt");
         assert_eq!(result, 1590491);
     }
 
     #[test]
     fn part2_example() {
-        let result = similarity_score("1/example.txt");
+        let result = similarity_score("example.txt");
         assert_eq!(result, 31);
     }
 
     #[test]
     fn part2() {
-        let result = similarity_score("1/input.txt");
+        let result = similarity_score("input.txt");
         assert_eq!(result, 22588371);
     }
 }
