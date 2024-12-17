@@ -12,6 +12,16 @@ struct Computer {
     ptr: usize,
 }
 impl Computer {
+    fn with_program(program: &[u8]) -> Self {
+        Computer {
+            reg_a: 0,
+            reg_b: 0,
+            reg_c: 0,
+            program: program.to_vec(),
+            ptr: 0,
+        }
+    }
+
     fn combo(&self, operand: u8) -> usize {
         match operand {
             0..=3 => operand.into(),
@@ -20,19 +30,6 @@ impl Computer {
             6 => self.reg_c,
             _ => unreachable!(),
         }
-    }
-
-    fn run_to_match(&mut self) -> Vec<u8> {
-        let mut output = Vec::new();
-        while self.ptr < self.program.len() {
-            if let Some(out) = self.step() {
-                if out != self.program[output.len()] {
-                    return output;
-                }
-                output.push(out);
-            }
-        }
-        output
     }
 
     fn run(&mut self) -> Vec<u8> {
@@ -122,54 +119,27 @@ fn computer_output(filename: &str) -> String {
     output.iter().join(",")
 }
 
-fn build_in_reverse() -> usize {
-    let program = [2u8, 4, 1, 1, 7, 5, 1, 5, 0, 3, 4, 3, 5, 5, 3, 0];
-    let mut a = 0;
-    for (idx, num) in program.iter().enumerate().rev() {
-        let mut i = 0;
-        while i < 8 {
-            let tmp_a = a + i;
-            let mut b = (tmp_a % 8) ^ 1;
-            let c = tmp_a / 2usize.pow(b.try_into().unwrap());
-            b = (b ^ 5) ^ c;
-            println!("{i} -> {}, {}", tmp_a, b % 8);
-            if b % 8 == *num as usize {
-                break;
-            }
-            i += 1;
-        }
-        if i == 8 {
-            println!("broke at idx {idx}");
-            break;
-        }
-        a = (a + i) * 8;
-    }
-    a / 8
-}
-
-pub fn correct_val_to_make_quine(filename: &str) -> usize {
-    let mut computer = load_computer(filename);
-    let mut i = 0;
-    loop {
-        if i % 1000 == 0 {
-            println!("{i}");
-        }
-        computer.reg_a = i;
-        computer.reg_b = 0;
-        computer.reg_c = 0;
+fn three_bits_backtrack(program: &[u8], prefix: usize, len: usize) -> Option<usize> {
+    let idx = program.len() - len;
+    let mut computer = Computer::with_program(program);
+    for i in 0..8 {
+        let a = (prefix << 3) + i;
+        computer.reg_a = a;
         computer.ptr = 0;
-        let output = computer.run_to_match();
-        if output == computer.program {
-            return i;
+        if computer.run() == program[idx..] {
+            if len == program.len() {
+                return Some(a);
+            } else if let Some(res) = three_bits_backtrack(program, a, len + 1) {
+                return Some(res);
+            }
         }
-        i += 1;
     }
+    None
 }
 
 #[cfg(test)]
 mod tests {
-    use super::load_computer;
-    use super::{computer_output, correct_val_to_make_quine};
+    use super::{computer_output, load_computer, three_bits_backtrack};
 
     #[test]
     fn part1_example() {
@@ -185,25 +155,15 @@ mod tests {
 
     #[test]
     fn part2_example() {
-        let result = correct_val_to_make_quine("example_part2.txt");
+        let computer = load_computer("example_part2.txt");
+        let result = three_bits_backtrack(&computer.program, 0, 1).unwrap();
         assert_eq!(result, 117440);
     }
 
     #[test]
-    fn part2_real() {
-        let mut computer = load_computer("input.txt");
-        let mut a = 20567765534425 * 8;
-        loop {
-            // 20567765534425 is the reg_a value that produces the entire program except the first
-            //                operator. Figured that out using build_in_reverse
-            a += 1;
-            computer.reg_a = a;
-            computer.ptr = 0;
-            let res = computer.run();
-            if res == computer.program {
-                break;
-            }
-        }
-        assert_eq!(a, 164542125272765);
+    fn part2() {
+        let computer = load_computer("input.txt");
+        let result = three_bits_backtrack(&computer.program, 0, 1).unwrap();
+        assert_eq!(result, 164542125272765);
     }
 }
