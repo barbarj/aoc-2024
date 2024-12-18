@@ -105,20 +105,26 @@ fn first_coord_to_block_exit(
     skip_ticks: usize,
 ) -> (usize, usize) {
     let positions = load_input(filename);
-    let mut maze = build_maze(&positions[..skip_ticks], map_width, map_height);
-    let mut seen = vec![vec![usize::MAX; maze[0].len()]; maze.len()];
-    for (x, y) in &positions[skip_ticks..] {
-        maze[*y][*x] = b'#';
+    let mut seen = vec![vec![usize::MAX; map_width]; map_height];
+    let mut low = skip_ticks;
+    let mut high = positions.len() - 1;
+    let mut mid = (low + high) / 2;
+
+    while low < high {
+        let maze = build_maze(&positions[..=mid], map_width, map_height);
         seen.iter_mut().for_each(|row| {
             row.iter_mut().for_each(|p| {
                 *p = usize::MAX;
             })
         });
         if find_shortest_path(&maze, &mut seen).is_none() {
-            return (*x, *y);
+            high = mid;
+        } else {
+            low = mid + 1;
         }
+        mid = (low + high) / 2;
     }
-    unreachable!();
+    positions[mid]
 }
 
 #[cfg(test)]
