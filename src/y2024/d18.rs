@@ -6,10 +6,10 @@ use std::{collections::BinaryHeap, fs};
 struct Position {
     x: usize,
     y: usize,
-    steps: usize,
+    steps: u16,
 }
 impl Position {
-    fn new(x: usize, y: usize, steps: usize) -> Self {
+    fn new(x: usize, y: usize, steps: u16) -> Self {
         Position { x, y, steps }
     }
 }
@@ -24,11 +24,34 @@ impl PartialOrd for Position {
     }
 }
 
-fn find_shortest_path(maze: &[Vec<u8>], seen: &mut [Vec<usize>]) -> Option<usize> {
+struct Maze {
+    maze: Vec<u128>,
+    width: usize,
+    height: usize,
+}
+impl Maze {
+    fn new(width: usize, height: usize) -> Self {
+        Maze {
+            maze: vec![0u128; height],
+            width,
+            height,
+        }
+    }
+
+    fn set_pos(&mut self, x: usize, y: usize) {
+        self.maze[y] |= 1 << x;
+    }
+
+    fn get_pos(&self, x: usize, y: usize) -> bool {
+        self.maze[y] & (1 << x) > 0
+    }
+}
+
+fn find_shortest_path(maze: &Maze, seen: &mut [Vec<u16>]) -> Option<u16> {
     let mut queue = BinaryHeap::new();
     let start_pos = Position::new(0, 0, 0);
-    let dest_x = maze[0].len() - 1;
-    let dest_y = maze.len() - 1;
+    let dest_x = maze.width - 1;
+    let dest_y = maze.height - 1;
 
     queue.push(start_pos);
     while let Some(pos) = queue.pop() {
@@ -40,25 +63,25 @@ fn find_shortest_path(maze: &[Vec<u8>], seen: &mut [Vec<usize>]) -> Option<usize
         }
         seen[pos.y][pos.x] = pos.steps;
         // up
-        if pos.y > 0 && maze[pos.y - 1][pos.x] != b'#' && seen[pos.y - 1][pos.x] > pos.steps + 1 {
+        if pos.y > 0 && !maze.get_pos(pos.x, pos.y - 1) && seen[pos.y - 1][pos.x] > pos.steps + 1 {
             queue.push(Position::new(pos.x, pos.y - 1, pos.steps + 1));
         }
         // right
-        if pos.x < maze[0].len() - 1
-            && maze[pos.y][pos.x + 1] != b'#'
+        if pos.x < maze.width - 1
+            && !maze.get_pos(pos.x + 1, pos.y)
             && seen[pos.y][pos.x + 1] > pos.steps + 1
         {
             queue.push(Position::new(pos.x + 1, pos.y, pos.steps + 1));
         }
         // down
-        if pos.y < maze.len() - 1
-            && maze[pos.y + 1][pos.x] != b'#'
+        if pos.y < maze.height - 1
+            && !maze.get_pos(pos.x, pos.y + 1)
             && seen[pos.y + 1][pos.x] > pos.steps + 1
         {
             queue.push(Position::new(pos.x, pos.y + 1, pos.steps + 1));
         }
         // left
-        if pos.x > 0 && maze[pos.y][pos.x - 1] != b'#' && seen[pos.y][pos.x - 1] > pos.steps + 1 {
+        if pos.x > 0 && !maze.get_pos(pos.x - 1, pos.y) && seen[pos.y][pos.x - 1] > pos.steps + 1 {
             queue.push(Position::new(pos.x - 1, pos.y, pos.steps + 1));
         }
     }
@@ -78,10 +101,10 @@ fn load_input(filename: &str) -> Vec<(usize, usize)> {
         .collect()
 }
 
-fn build_maze(positions: &[(usize, usize)], width: usize, height: usize) -> Vec<Vec<u8>> {
-    let mut maze = vec![vec![b'.'; width]; height];
+fn build_maze(positions: &[(usize, usize)], width: usize, height: usize) -> Maze {
+    let mut maze = Maze::new(width, height);
     for (x, y) in positions {
-        maze[*y][*x] = b'#';
+        maze.set_pos(*x, *y);
     }
     maze
 }
@@ -91,10 +114,10 @@ fn shortest_path_through_corrupted_memory(
     map_width: usize,
     map_height: usize,
     ticks: usize,
-) -> usize {
+) -> u16 {
     let positions = load_input(filename);
     let maze = build_maze(&positions[..ticks], map_width, map_height);
-    let mut seen = vec![vec![usize::MAX; maze[0].len()]; maze.len()];
+    let mut seen = vec![vec![u16::MAX; map_width]; map_height];
     find_shortest_path(&maze, &mut seen).unwrap()
 }
 
@@ -105,7 +128,7 @@ fn first_coord_to_block_exit(
     skip_ticks: usize,
 ) -> (usize, usize) {
     let positions = load_input(filename);
-    let mut seen = vec![vec![usize::MAX; map_width]; map_height];
+    let mut seen = vec![vec![u16::MAX; map_width]; map_height];
     let mut low = skip_ticks;
     let mut high = positions.len() - 1;
     let mut mid = (low + high) / 2;
@@ -114,7 +137,7 @@ fn first_coord_to_block_exit(
         let maze = build_maze(&positions[..=mid], map_width, map_height);
         seen.iter_mut().for_each(|row| {
             row.iter_mut().for_each(|p| {
-                *p = usize::MAX;
+                *p = u16::MAX;
             })
         });
         if find_shortest_path(&maze, &mut seen).is_none() {
