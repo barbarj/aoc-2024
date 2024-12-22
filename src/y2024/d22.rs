@@ -17,16 +17,6 @@ fn get_inputs(filename: &str) -> Vec<i64> {
         .collect()
 }
 
-fn step_secret_num(mut num: i64) -> i64 {
-    num ^= num * 64;
-    num %= 16777216;
-    num ^= num / 32;
-    num %= 16777216;
-    num ^= num * 2048;
-    num %= 16777216;
-    num
-}
-
 struct SecretNumberSeq {
     num: i64,
 }
@@ -111,62 +101,6 @@ impl Seq4 {
         self.b = self.c;
         self.c = self.d;
         self.d = next;
-    }
-}
-
-struct SeqGen {
-    a: i64,
-    b: i64,
-    c: i64,
-    d: i64,
-}
-impl SeqGen {
-    fn new() -> Self {
-        SeqGen {
-            a: -9,
-            b: -9,
-            c: -9,
-            d: -9,
-        }
-    }
-
-    fn as_seq(&self) -> Seq4 {
-        Seq4::new(self.a, self.b, self.c, self.d)
-    }
-
-    fn is_valid(&self) -> bool {
-        let sum = self.a + self.b + self.c + self.d;
-        (-9..=9).contains(&sum)
-    }
-
-    fn step(&mut self) {
-        self.d += 1;
-        if self.d == 10 {
-            self.d = -9;
-            self.c += 1;
-        }
-        if self.c == 10 {
-            self.c = -9;
-            self.b += 1;
-        }
-        if self.b == 10 {
-            self.b = -9;
-            self.a += 1;
-        }
-    }
-}
-impl Iterator for SeqGen {
-    type Item = Seq4;
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.a == 10 {
-            return None;
-        }
-        let seq = self.as_seq();
-        self.step();
-        while self.a != 10 && !self.is_valid() {
-            self.step();
-        }
-        Some(seq)
     }
 }
 
