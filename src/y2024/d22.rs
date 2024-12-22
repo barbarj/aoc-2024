@@ -1,13 +1,6 @@
 #![allow(dead_code)]
 
-use std::{
-    collections::HashSet,
-    fs,
-    sync::{Arc, RwLock},
-    thread,
-};
-
-use itertools::Itertools;
+use std::{collections::HashMap, fs};
 
 fn get_inputs(filename: &str) -> Vec<i64> {
     let contents = fs::read_to_string("input/2024/22/".to_owned() + filename).unwrap();
@@ -104,62 +97,30 @@ impl Seq4 {
     }
 }
 
-fn score_seq(starting_nums: &[i64], seq: &Seq4) -> i64 {
-    starting_nums
-        .iter()
-        .map(|n| {
-            SecretNumberSeq::new(*n)
-                .sequences()
-                .take(1996)
-                .find(|(s, _)| s == seq)
-                .map(|(_, p)| p)
-                .unwrap_or(0)
-        })
-        .sum()
-}
-
-fn seq_set(nums: &[i64]) -> HashSet<Seq4> {
-    nums.iter()
-        .flat_map(|n| {
-            SecretNumberSeq::new(*n)
-                .sequences()
-                .take(1995)
-                .map(|(s, _)| s)
-        })
-        .collect()
-}
-
-pub fn sell_for_bananas(filename: &str, thread_count: usize) -> i64 {
+pub fn sell_for_bananas_better(filename: &str) -> i64 {
     let nums = get_inputs(filename);
-    let sequences = seq_set(&nums);
-    let seq_len = sequences.len();
-    let starting_nums = Arc::new(RwLock::new(nums));
-    let seq_chunks = sequences.into_iter().chunks(seq_len / (thread_count - 1));
-    let mut chunk_iter = seq_chunks.into_iter();
-
-    let mut handles = Vec::new();
-    for _ in 0..thread_count {
-        let seqgen: Vec<_> = chunk_iter.next().unwrap().collect();
-        let nums_lock = starting_nums.clone();
-        let h = thread::spawn(move || {
-            let nums = nums_lock.read().unwrap();
-            let mut max = 0;
-            for seq in seqgen {
-                let score = score_seq(&nums, &seq);
-                max = max.max(score);
-            }
-            max
-        });
-        handles.push(h);
+    let mut seen: HashMap<Seq4, (usize, i64)> = HashMap::new();
+    for (i, num) in nums.iter().enumerate() {
+        for (seq, price) in SecretNumberSeq::new(*num).sequences().take(1995) {
+            seen.entry(seq)
+                .and_modify(|data| {
+                    if data.0 < i {
+                        data.0 = i;
+                        data.1 += price;
+                    }
+                })
+                .or_insert((i, price));
+        }
     }
-    let results: Vec<_> = handles.into_iter().map(|h| h.join().unwrap()).collect();
-    results.into_iter().max().unwrap()
+    seen.values().map(|(_, price)| *price).max().unwrap()
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::y2024::d22::sell_for_bananas_better;
+
     use super::sum_secret_numbers_after_steps;
-    use super::{sell_for_bananas, SecretNumberSeq, Seq4};
+    use super::{SecretNumberSeq, Seq4};
 
     #[test]
     fn part1_example() {
@@ -189,14 +150,13 @@ mod tests {
 
     #[test]
     fn part2_example() {
-        let result = sell_for_bananas("example2.txt", 3);
+        let result = sell_for_bananas_better("example2.txt");
         assert_eq!(result, 23);
     }
 
-    //#[test]
+    #[test]
     fn part2() {
-        // not currently tested because it takes 90 seconds for even the release build to run
-        let result = sell_for_bananas("example2.txt", 12);
+        let result = sell_for_bananas_better("input.txt");
         assert_eq!(result, 2152);
     }
 }
